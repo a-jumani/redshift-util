@@ -101,6 +101,24 @@ def addS3AccessRole():
     )["ResponseMetadata"]["HTTPStatusCode"]
 
 
+def startCluster():
+    """ Spin up a Redshift cluster.
+    """
+    pass
+
+
+def enableRemoteAccess():
+    """ Enable remote access to the cluster.
+    """
+    pass
+
+
+def terminateCluster():
+    """ Delete the cluster and clean up resources
+    """
+    pass
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -117,7 +135,27 @@ if __name__ == "__main__":
         help="get cluster status"
     )
 
+    # argument to denote action to take
+    action.add_argument(
+        "--action",
+        help=textwrap.dedent(
+            """\
+            execute step n, where n is from 1..4 and means:
+                step 1: create IAM role
+                step 2: spin up cluster
+                step 3: enable remote access
+                step 4: delete cluster
+            """
+            ),
+        type=int,
+        choices=(1, 2, 3, 4),
+        metavar="n"
+    )
+
     args = parser.parse_args()
 
     if args.status:
         status()
+    elif args.action:
+        [addS3AccessRole, startCluster,
+         enableRemoteAccess, terminateCluster][args.action-1]()
