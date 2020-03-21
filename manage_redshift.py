@@ -181,7 +181,21 @@ def enableRemoteAccess():
 def terminateCluster():
     """ Delete the cluster and clean up resources
     """
-    pass
+    try:
+        # delete cluster
+        redshift.delete_cluster(
+            ClusterIdentifier=DWH_CLUSTER_IDENTIFIER,
+            SkipFinalClusterSnapshot=True
+        )
+
+        # clear up role
+        iam.detach_role_policy(
+            RoleName=DWH_IAM_ROLE_NAME,
+            PolicyArn="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+        )
+        iam.delete_role(RoleName=DWH_IAM_ROLE_NAME)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":
