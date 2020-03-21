@@ -27,6 +27,9 @@ DWH_PORT = config.get("DWH", "DWH_PORT")
 # IAM role name for Redshift cluster
 DWH_IAM_ROLE_NAME = config.get("DWH", "DWH_IAM_ROLE_NAME")
 
+# security config
+CIDR_IP_ALLOWED = config.get("SG", "CIDR_IP_ALLOWED")
+
 # create relevant clients
 iam = boto3.client(
     "iam",
@@ -37,6 +40,13 @@ iam = boto3.client(
 
 redshift = boto3.client(
     "redshift",
+    region_name="us-west-2",
+    aws_access_key_id=KEY,
+    aws_secret_access_key=SECRET
+)
+
+ec2 = boto3.resource(
+    "ec2",
     region_name="us-west-2",
     aws_access_key_id=KEY,
     aws_secret_access_key=SECRET
@@ -139,7 +149,33 @@ def startCluster():
 def enableRemoteAccess():
     """ Enable remote access to the cluster.
     """
-    pass
+    myClusterProps = redshift.describe_clusters(
+        ClusterIdentifier=DWH_CLUSTER_IDENTIFIER
+    )['Clusters'][0]
+
+    # attempt to allow incoming TCP connections to the cluster
+    print("Enabling incoming TCP connections...")
+    try:
+        vpc = ec2.Vpc(id=myClusterProps["VpcId"])
+        for sg in vpc.security_groups.all():
+            if sg.group_name == "default":
+                defaultSg = sg
+                break
+
+        defaultSg.authorize_ingress(
+            GroupName=defaultSg.group_name,
+            CidrIp=CIDR_IP_ALLOWED,
+            IpProtocol='TCP',
+            FromPort=int(DWH_PORT),
+            ToPort=int(DWH_PORT)
+        )
+    except Exception as e:
+        print(e)
+        return
+
+    print("\nCluster is ready for access!")
+    endpoint = myClusterProps["Endpoint"]["Address"]
+    print(f"Endpoint: {endpoint}")
 
 
 def terminateCluster():
