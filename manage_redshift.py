@@ -3,7 +3,7 @@ import boto3
 import configparser
 import json
 import textwrap
-
+import time
 
 config = configparser.ConfigParser()
 config.read_file(open("config.cfg"))
@@ -104,7 +104,36 @@ def addS3AccessRole():
 def startCluster():
     """ Spin up a Redshift cluster.
     """
-    pass
+    # attempt to create a cluster
+    print("Creating a Redshift cluster...")
+    try:
+        redshift.create_cluster(
+
+            # hardware parameters
+            ClusterType=DWH_CLUSTER_TYPE,
+            NodeType=DWH_NODE_TYPE,
+            NumberOfNodes=int(DWH_NUM_NODES),
+
+            # database access configuration
+            DBName=DWH_DB,
+            ClusterIdentifier=DWH_CLUSTER_IDENTIFIER,
+            MasterUsername=DWH_DB_USER,
+            MasterUserPassword=DWH_DB_PASSWORD,
+
+            # accesses
+            IamRoles=[iam.get_role(RoleName=DWH_IAM_ROLE_NAME)["Role"]["Arn"]]
+        )
+    except Exception as e:
+        print(e)
+        return
+
+    # wait for cluster to spin up
+    print("Waiting for cluster to be available...")
+    while redshift.describe_clusters(
+        ClusterIdentifier=DWH_CLUSTER_IDENTIFIER
+    )["Clusters"][0]["ClusterStatus"] != "available":
+        time.sleep(30)
+        print("\tChecking status again...")
 
 
 def enableRemoteAccess():
